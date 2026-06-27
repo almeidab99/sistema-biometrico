@@ -1,0 +1,20 @@
+#include <esp32cam-asyncweb.h>
+#include <esp32cam.h>
+
+# Sistema de control de acceso ESP32-CAM
+Usar una ESP32-CAM para desbloquear una puerta cuando se reconoce una cara. Un sencillo sistema de control de acceso basado en reconocimiento facial con la ESP32-CAM y el IDE de Arduino.
+
+![Interfaz](https://robotzero.one/wp-content/uploads/bfi_thumb/featured-master-1-6qb32y1978bm9yf6ne9nypfey83yf3pvisk7rozvfi8.jpg)
+
+Nota: si está utilizando la versión 1.0.5 de las bibliotecas de hardware Arduino ESP32, ahora puede ejecutar todo el proyecto solo con estos archivos
+
+FaceDoorEntryESP32Cam.ino
+camera_index.h
+camera_pins.h
+particiones.csv
+
+No es necesario crear nuevas particiones en el IDE de Arduino
+
+Nota: Las versiones 2.x.x de las bibliotecas de hardware ESP32 no admiten el reconocimiento facial en los módulos ESP32. El algoritmo se ha "mejorado" y ahora funciona demasiado lento en estos procesadores.
+
+Detalles completos en el blog: https://robotzero.one/access-control-with-face-recognition/

@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de acceso de reconocimiento facial</title>
+<style>
+@media only screen and (min-width: 850px) {
+	body {
+		 display: flex;
+	}
+	 #content-right {
+		 margin-left: 10px;
+	}  
+}
+body {
+     font-family: Arial, Helvetica, sans-serif;
+     background: #181818;
+     color:  #EFEFEF;
+     font-size: 16px;
+}
+ #content-left {
+     max-width: 400px;
+	 flex: 1;
+}
+ #content-right {
+     max-width: 400px;
+	 flex: 1;
+}
+ #stream {
+     width: 100%;
+}
+ #status-display {
+     height: 25px;
+     border: none;
+     padding: 10px;
+     font: 18px/22px sans-serif;
+     margin-bottom: 10px;
+     border-radius: 5px;
+     background: darkgreen;
+     text-align: center;
+}
+ #person {
+     width:100%;
+     height: 25px;
+     border: none;
+     padding: 20px 10px;
+     font: 18px/22px sans-serif;
+     margin-bottom: 10px;
+     border-radius: 5px;
+     resize: none;
+     box-sizing: border-box;
+}
+ button {
+     display: block;
+     margin: 10px 0;
+     padding: 0 25px;
+     border: 0;
+     width: 48%;
+     line-height: 30px;
+     cursor: pointer;
+     color: #fff;
+     background: #001f3f;
+     border-radius: 5px;
+     font-size: 16px;
+     outline: 0;
+}
+ .buttons {
+     height:40px;
+}
+ button:hover {
+     background: #ff494d;
+}
+ button:active {
+     background: #f21c21;
+}
+ button:disabled {
+     cursor: default;
+     background: #a0a0a0;
+}
+ .left {
+     float: left;
+}
+ .right {
+     float: right;
+}
+ .image-container {
+     position: relative;
+}
+ .stream {
+     max-width: 400px;
+}
+ ul {
+     list-style: none;
+     padding: 5px;
+     margin:0;
+}
+ li {
+     padding: 5px 0;
+}
+ .delete {
+     background: #001f3f;
+     border-radius: 100px;
+     color: #fff;
+     text-align: center;
+     line-height: 18px;
+     cursor: pointer;
+}
+ h3 {
+     margin-bottom: 3px;
+}
+</style>
+</head>
+<body>
+<div id="content-left">
+  <div id="stream-container" class="image-container"> <img id="stream" src=""> </div>
+</div>
+<div id="content-right">
+  <div id="status-display"> <span id="current-status"></span> </div>
+  <div id="person-name">
+    <input id="person" type="text" value="" placeholder="Escriba el nombre del usuario aqui">
+  </div>
+  <div class="buttons">
+    <button id="button-stream" class="left">CAMARA DE TRANSMISION</button>
+    <button id="button-detect" class="right">DETECTAR CARAS</button>
+  </div>
+  <div class="buttons">
+    <button id="button-capture" class="left" title="Ingrese un nombre arriba antes de capturar una cara">AGREGAR USUARIO</button>
+    <button id="button-recognise" class="right">CONTROL DE ACCESO</button>
+  </div>
+  <div class="people">
+    <h3>Rostros capturados: </h3>
+    <ul>
+    </ul>
+  </div>
+  <div class="buttons">
+    <button id="delete_all">ELIMINAR TODOS</button>
+  </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function(event) {
+  var baseHost = document.location.origin;
+  var streamUrl = baseHost + ":81";
+  const WS_URL = "ws://" + window.location.host + ":82";
+  const ws = new WebSocket(WS_URL);
+
+  const view = document.getElementById("stream");
+  const personFormField = document.getElementById("person");
+  const streamButton = document.getElementById("button-stream");
+  const detectButton = document.getElementById("button-detect");
+  const captureButton = document.getElementById("button-capture");
+  const recogniseButton = document.getElementById("button-recognise");
+  const deleteAllButton = document.getElementById("delete_all");
+
+  // ganancia, frecuencia, duracion (Se utiliza para generar sonidos en respuesta a ciertos eventos)
+  a=new AudioContext();
+  function alertSound(w,x,y){
+    v=a.createOscillator();
+    u=a.createGain();
+    v.connect(u);
+    v.frequency.value=x;
+    v.type="square";
+    u.connect(a.destination);
+    u.gain.value=w*0.01;
+    v.start(a.currentTime);
+    v.stop(a.currentTime+y*0.001);
+  }
+// MANEJADORES DE EVENTOS: (ws.onopen), (ws.onmessage)
+  ws.onopen = () => {                       // Se ejecutara cuando la conexion WebSocket se abra.
+    console.log(`Connected to ${WS_URL}`);  // para mostrar un mensaje en la consola del navegador o en el entorno donde se este ejecutando este codigo
+  };
+  ws.onmessage = message => {     // Esta funcion de flecha se ejecutara cuando se reciba un mensaje a traves de la conexion WebSocket.
+    if (typeof message.data === "string") {       // Si el tipo mensaje es de tipo ""string", entonces hace lo siguiente:
+      if (message.data.substr(0, 8) == "listface") {       // Si el mensaje en cadena comienza con "Listface", entonces hace lo siguiente:
+        addFaceToScreen(message.data.substr(9));           // (addFaceToScreen) para agregar una cara a la pantalla.
+      } else if (message.data == "delete_faces") {         // Si el mensaje en cadena comienza con "delete_faces", entonces hace lo siguiente:
+        deleteAllFacesFromScreen();                        // (deleteAllFacesFromScreen) para eliminar todas las caras de la pantalla.
+      } else if (message.data == "door_open") {            // Si el mensaje en cadena comienza con "door_open", entonces hace lo siguiente:
+          alertSound(10,233,100); alertSound(3,603,200);   // (alertSound) para reproducir sonidos.
+      } else {                                             // En otros casos, se actualiza el contenido de elementos HTML en la pagina.                 
+          document.getElementById("current-status").innerHTML = message.data;
+          document.getElementById("status-display").style.background = "green";
+      }
+    }
+    if (message.data instanceof Blob) {   // Si el mensaje recibido es una instancia de Blob, entonces hace los siguiente:
+      var urlObject = URL.createObjectURL(message.data);  // se crea una URL para el objeto Blob
+      view.src = urlObject;                              //  se establece como fuente de la imagen "view"
+    }
+  }
+
+  streamButton.onclick = () => {    // Cuando se hace clic en el boton con el id "streamButton", se envia el mensaje "stream" a traves del WebSocket (ws).
+    ws.send("stream");
+  };
+  detectButton.onclick = () => {   // Se envia el mensaje "detect" cuando se hace clic en el boton con el id "detectButton".
+    ws.send("detect");
+  };
+  captureButton.onclick = () => { // Cuando se hace clic en el boton con el id "captureButton", se obtiene el valor ingresado en un campo de entrada con el id "person" y se envia junto con el mensaje "capture: a traves del WebSocket
+    person_name = document.getElementById("person").value;
+
+    ws.send("capture:" + person_name);
+  };
+  recogniseButton.onclick = () => { // Cuando se hace clic en el boton con el id "recogniseButton", se envia el mensaje "recognise" a traves del WebSocket.
+    ws.send("recognise");
+  };
+  deleteAllButton.onclick = () => {  // Cuando se hace clic en el boton con el id "deleteAllButton", se envia el mensaje "delete_all" a traves del WebSocket.
+    ws.send("delete_all");
+  };
+  personFormField.onkeyup = () => { // Cuando se presiona una tecla en el campo de entrada con el id "personFormField", se habilita el boton de captura ("captureButton") al establecer su propiedad "disabled" en falso.
+    captureButton.disabled = false;
+  };
+
+  function deleteAllFacesFromScreen() {   // Se encarga de eliminar elementos de la lista de caras en la interfaz de usuario
+    // elimina la lista de caras solo en el navegador
+    const faceList = document.querySelector("ul");  // Encuentra la lista de caras en el documento (presumiblemente representada como una lista desordenada <ul>).
+    while (faceList.firstChild) {                   
+      faceList.firstChild.remove();                 // Luego, elimina todos los elementos hijos de la lista mientras haya elementos en ella.
+    }
+    personFormField.value = "";                    // Limpia el valor del campo de entrada con el id "personFormField".
+    captureButton.disabled = true;                 // Deshabilita el boton de captura ("captureButton") estableciendo su propiedad "disabled" en verdadero.
+  }
+
+  function addFaceToScreen(person_name) {             // Agrega elementos a una lista de caras en la interfaz de usuario
+    const faceList = document.querySelector("ul");    // Esta linea busca un elemento <ul> en el documento HTML y lo asigna a la variable faceList. La variable faceList representa la lista de caras en la interfaz de usuario.
+    let listItem = document.createElement("li");      // Aqui, se crea un nuevo elemento de lista <li> que se utilizara para representar a una persona en la lista de caras. Este elemento se almacena en la variable listItem.
+    let closeItem = document.createElement("span");   // Se crea un nuevo elemento <span> que servira como un boton de eliminacion para la persona
+    closeItem.classList.add("delete");                // Se le asigna una clase "delete"
+    closeItem.id = person_name;                       // Y un ID igual al nombre de la persona (person_name).    
+    closeItem.addEventListener("click", function() {  // Se agrega un evento de clic al elemento closeItem
+      ws.send("remove:" + person_name);               // Cuando el boton de eliminacion se hace clic, se ejecutara esta funcion anonima que enviara un mensaje a traves de WebSocket (ws.send()) para indicar que se debe eliminar la persona con el nombre person_name.
+    });
+    listItem.appendChild(                 // Se agrega el nombre de la persona (person_name) como un elemento <strong> dentro del elemento de lista <li>.
+      document.createElement("strong")    // Se establece el texto del elemento strong con el nombre de la persona.
+    ).textContent = person_name;
+    listItem.appendChild(closeItem).textContent = "X"; // Se agrega el elemento closeItem (boton de eliminacion) al elemento de lista <li>. Tambien se establece el texto del elemento closeItem en "X", que representara el boton de eliminar.
+    faceList.appendChild(listItem); // Se agrega el elemento de lista <li>, que representa a la persona con su nombre y el boton de eliminacion, a la lista de caras (faceList) en la interfaz de usuario.
+  }
+
+  captureButton.disabled = true;
+});
+</script>
+</body>
+</html>

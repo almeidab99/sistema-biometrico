@@ -1,0 +1,667 @@
+// Se incluyen las bibliotecas a utilizar:
+#include <ArduinoWebsockets.h>  
+#include "esp_http_server.h"
+#include "esp_timer.h"
+#include "esp_camera.h"
+#include "camera_index.h" 
+#include "Arduino.h"
+#include "fd_forward.h"
+#include "fr_forward.h"
+#include "fr_flash.h"
+#include <ESPmDNS.h>  // Biblioteca para el multicast DNS (mDNS)
+////////NUEVOOOO 20-11-2024/////
+#include <WiFiClientSecure.h>
+#include <ssl_client.h> 
+////////////////////
+#include <HardwareSerial.h> 
+#include <WiFi.h>
+////PARA SERIAL COMUNICACION////
+HardwareSerial SerialPort(2); //Sustituido
+// HardwareSerial SerialPort(1);
+#define UART_RX_PIN 14 // GPIO 14 (U2RXD) para RX
+#define UART_TX_PIN 15 // GPIO 15 (HS2_CMD) para TX
+// const int UART_RX_PIN = 3; // GPIO 3 (U2RXD) para RX 
+// const int UART_TX_PIN = 1; // GPIO 1 (HS2_CMD) para TX
+//////NUEVOOO 20-11-2024////////
+// Certificado SSL en base64
+const char* cert = "-----BEGIN CERTIFICATE-----\n"
+"MIIFFzCCAv+gAwIBAgIUWN3hXlBdiB6pQ3BrMvY7QbQ018QwDQYJKoZIhvcNAQEL\n"
+"BQAwGzEZMBcGA1UEAwwQKi5zZXJ2aWRvci5sb2NhbDAeFw0yNDExMTkwMDE2MTJa\n"
+"Fw0yNTExMTkwMDE2MTJaMBsxGTAXBgNVBAMMECouc2Vydmlkb3IubG9jYWwwggIi\n"
+"MA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCgg8TaVhjpz2YYlyn34ELPiuW0\n"
+"2zEKfk0OvqhxOoQpjzBoBv8BWxwZe3OUhnbik6hyWd2/NBF5mOLpuy/dYGCaqujL\n"
+"bVDdWOs2+ryzBN24ba88sV22Re1uSD8BWJZqRPvQ8fkOU+gAxGoIzAJqgT9LJriK\n"
+"sVawNKn2M2vCDtbmrb0kG0gWkQOmaBimHdFi6LWsxuI3wsASUb6O94JTa3dB/bxH\n"
+"67loEWD9tRTaF5uUmKlHlw9wqp1BFozT+2sDTTfIM+YTGPv8TV/7Nk5Z2rP8tAwU\n"
+"6F9XBfipe+G9JjPekjollXy2tCFItU/xFFsLfVZKg8nuRbHLmeroF5CeIdf/qPyk\n"
+"tzsd3ATqAFuCQBu8SgrDL8K0mDqa0gc26mbaYaxEWOCyat9YgaBzn7KR/nhXJr5u\n"
+"JCVe3lcXtE0SHoMxLWavbMaZ+evPDELU6ttsino59lD4EXrhaxyulkF91TnfMC5s\n"
+"7ge38WmiLLDG4QoGKhP3CCRGfMsMV3Ey5vKmn71O6rSawRgYWCazR4DzK5utWlL5\n"
+"1IdsZytFvbKbDAz9EMBerkJcQmgElDUNIFKChN+nH0QjW2smneTXecdOTylBOqem\n"
+"FBbpeg7jOqWuvKXFGaDv8tEDMnje3ugVaQ81HOCmPt+tWFLG+NpwudaNZrZQzYhA\n"
+"VF2Sv3wkgi+AOKyrRwIDAQABo1MwUTAdBgNVHQ4EFgQUhivsuwatxb2e58Sb9CZn\n"
+"VWCd/yYwHwYDVR0jBBgwFoAUhivsuwatxb2e58Sb9CZnVWCd/yYwDwYDVR0TAQH/\n"
+"BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAccpkFC0nD6oaZn3BEgztQPpG0Qly\n"
+"AyWWnaRTsKvpB9HmdNk4fB8q1HtFCHqM1U13s3CTdonK5wjBFptViDtIkNUt+bYI\n"
+"fhFZnllX1jN+EDhtM7MU9blJAfKUaeo+AI0JUO4LhJHG6iyAuLw1na3/UhERkKxs\n"
+"zL6L9T2Sz2cQHZwpbcfw3etiYFCbZtowQDdl+JJJ10YQVWfzJBsz7wqD0SiAq+Vx\n"
+"Dj/4/4JO/dvUiAlmdkQUTu/O+YRIbpc19zszLsuT1p/B/G7JFo/19dlspzM5fzYL\n"
+"rQNXfKjGdLrCkFPWvSt0A2+HZMRntgghcLlzmSSf9y+nktOyExKTnW8qwwR2BTxl\n"
+"MK+jeD66dywI5TUf9sE3r2p7cs/JhczAcXqRpY1D3JGx4+cqnYOPKOg7CFPC/RVS\n"
+"NsF1jikOfdbfrSqRoGv1q/Lx4QpV0VZcF7eQhegH9EuH15r3pCA1nFGG1jCKGxml\n"
+"SZaMiJJqsof48KenQVFm4mhpdlL/UWeatQkby4rQQmI1Z3JrBjMZmZWxrWWaUrIS\n"
+"NPfdaPAvqDEK81RgkgCcaKIg+KK8WCNyKMufbREtXk7MeWVDor+nlLV0KEhjHfY6\n"
+"7Fs74BpwWvZJSaSCEMIF9c8ECgMIhatkG6yXF+f2A22j4VnuE1GmCrrRADAe+ng+\n"
+"0lExP/gGy+A4clE=\n"
+"-----END CERTIFICATE-----";
+// PARA LA CLAVE
+const char* private_key = "-----BEGIN PRIVATE KEY-----\n"
+"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\n"
+"9/SnI5EKo6YRvh5GcpRk33TCuY/2yA==\n"
+"-----END PRIVATE KEY-----";
+///////////////////////////////
+const char* ssid = "prueba";          // Identificador de la red
+const char* password = "12345678";    // Password de la red
+
+#define ENROLL_CONFIRM_TIMES 5    // Realiza la toma de la cara en 5 segundos ante de guardar, por esa razon el valor de "5"
+#define FACE_ID_SAVE_NUMBER  7    // Guarda hasta 7 id de caras en la base de datos o memoria flash del esp, por esa razon el valor "7"
+#define LED_FLASH 4               // Uitliza 4 para el pin del LED flash 
+bool flash_led_on = false;        // El flash del led permanene en modo desligado o falso        
+
+#define CAMERA_MODEL_AI_THINKER   // Se define el modelo de camara que está configurado en el archivo camera_pins.h
+#include "camera_pins.h"          // Biblioteca utilizada para la configuracion de las camaras
+
+using namespace websockets;
+WebsocketsServer socket_server;
+
+char person[ENROLL_NAME_LEN * FACE_ID_SAVE_NUMBER];
+
+camera_fb_t * fb = NULL;
+
+long current_millis;                    // Milisengundos actuales
+long last_detected_millis = 0;          // Ultimos milisegundos detectados
+unsigned long actual = 0;   // variable para tiempo actual
+unsigned long anterior = 0; // variable para tiempo anterior
+unsigned long anterior_2 = 0; // variable para tiempo anterior
+int contador = 0;           // variable para contador
+bool estado_tiempo = false; // variable para el estado de tiempo
+bool estado_tiempo2 = false; // variable para el estado de tiempo2
+//#define relay_pin 2                     // Utiliza el pin 2 para el relay (el pin 12 también se puede utilizar)
+unsigned long door_opened_millis = 0;   // Puerta abierta en milisegundos 
+long interval = 5000;                   // Abrir la cerradura durante el intervalo de .. milisegundos, luego cierra
+bool face_recognised = false;           // Rostro reconocido es igual a falso 
+
+void app_facenet_main();                // Llama la funcion app_facenet_main
+void app_httpserver_init();             // Llama la funcion app_httpserver_init 
+
+
+// Estructura que almacena todas las informaciones que contiene la cara (proceso de imagenes):
+typedef struct
+{
+  uint8_t *image;           
+  box_array_t *net_boxes;   
+  dl_matrix3d_t *face_id;
+} http_img_process_result;
+
+
+static inline mtmn_config_t app_mtmn_config() // Estructura para deteccion facial
+{
+  mtmn_config_t mtmn_config = {0};
+  mtmn_config.type = FAST;
+  mtmn_config.min_face = 80;
+  mtmn_config.pyramid = 0.707;
+  mtmn_config.pyramid_times = 4;
+  mtmn_config.p_threshold.score = 0.6;
+  mtmn_config.p_threshold.nms = 0.7;
+  mtmn_config.p_threshold.candidate_number = 20;
+  mtmn_config.r_threshold.score = 0.7;
+  mtmn_config.r_threshold.nms = 0.7;
+  mtmn_config.r_threshold.candidate_number = 10;
+  mtmn_config.o_threshold.score = 0.7;
+  mtmn_config.o_threshold.nms = 0.7;
+  mtmn_config.o_threshold.candidate_number = 1;
+  return mtmn_config;
+}
+mtmn_config_t mtmn_config = app_mtmn_config();
+
+face_id_name_list st_face_list; // contiene lista de identificadores de caras con nombres
+static dl_matrix3du_t *aligned_face = NULL; // variable de puntero matriz (almecena la cara alineada y procesada)
+
+httpd_handle_t camera_httpd = NULL;
+
+// Estructura de estados de la camara
+typedef enum
+{
+  START_STREAM,   
+  SHOW_FACES,
+  START_RECOGNITION,
+  START_ENROLL,
+  ENROLL_COMPLETE,
+  VERIFICACION_ENROLL,  
+  VERIFICACION_DELETE,
+} en_fsm_state;
+en_fsm_state g_state;
+
+//Para almacenar nombres
+typedef struct
+{
+  char enroll_name[ENROLL_NAME_LEN];
+} httpd_resp_value;
+
+httpd_resp_value st_name;
+
+////NUEVOOO 20-11-2024//////
+// Declara el servidor en el puerto 80
+//WebServer server(443);
+////////////////////////////
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
+  anterior = millis();//configuracion para milis
+  anterior_2 = millis();//configuracion para milis (tiempo 2)
+  digitalWrite(LED_FLASH, LOW);   // Pin del flash del esp permanece apagado
+  pinMode(LED_FLASH, OUTPUT);     // Pin para el flash del esp de tipo salida
+
+  // Configuracion de la camara
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+
+
+  //inicia con especificaciones altas para preasignar buffers más grandes
+  if (psramFound()) {                     // Si PSRAM está presente, entonces hace lo siguiente:
+    config.frame_size = FRAMESIZE_UXGA;   // Se configura el tamaño de cuadro (frame size) de la cámara a UXGA.
+    config.jpeg_quality = 10;             // Se establece la calidad JPEG en 10.
+    config.fb_count = 2;                  // Se establece el recuento (count) de búferes de framebuffer en 2.
+  } else {                                // Si PSRAM no está presente, entonces hace lo siguiente:
+    config.frame_size = FRAMESIZE_SVGA;   // Se configura el tamaño de cuadro de la cámara a SVGA.
+    config.jpeg_quality = 12;             // Se establece la calidad JPEG en 12.
+    config.fb_count = 1;                  // Se establece el recuento de búferes de framebuffer en 1.
+  }
+
+  // Inicio de cámara
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) // Si err no es igual a ESP_OK, entonces hace lo siguiente:
+  {      
+    Serial.printf("El inicio de la cámara falló con error 0x%x", err);  //  Indica que ha ocurrido un error durante la inicialización de la cámara
+    esp_restart(); // Reiniciar el ESP32
+    return;                 // Después de imprimir el mensaje de error, la función devuelve el control inmediatamente. 
+  }
+
+  sensor_t * s = esp_camera_sensor_get();
+  s->set_framesize(s, FRAMESIZE_QVGA);
+
+  // Conectar a WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+    Serial.println("");
+    Serial.println("WiFi conectada");
+
+  //////////////////////////////
+  // Iniciar el servicio mDNS
+  if (MDNS.begin("servidor"))
+  {
+    Serial.println("mDNS servicio iniciado");
+    Serial.print("Camara Lista! Usar: 'http://");
+    Serial.print("servidor.local");
+    Serial.println(" para conectar e iniciar el reconocimiento facial");
+  }else
+  {
+    Serial.println("Error al iniciar el servicio mDNS");
+  }
+
+  app_httpserver_init();
+  app_facenet_main();
+  socket_server.listen(82);
+
+  Serial.print("Camara Lista! Usar: 'http://");
+  Serial.print(WiFi.localIP());
+  Serial.println(" para conectar e iniciar el reconocimiento facial");
+  SerialPort.begin(115200, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN); // para comunicacio entre seriales RX TX
+
+}  
+
+static esp_err_t index_handler(httpd_req_t *req)
+{
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+  return httpd_resp_send(req, (const char *)index_ov2640_html_gz, index_ov2640_html_gz_len);
+}
+
+httpd_uri_t index_uri = 
+{
+  .uri       = "/",
+  .method    = HTTP_GET,
+  .handler   = index_handler,
+  .user_ctx  = NULL
+};
+
+void app_httpserver_init ()   // Para configurar y iniciar un servidor HTTP en la aplicación
+{
+  // httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+  // // Configurar el nombre del host mDNS
+  // // config.server_port = 80;  // Puerto HTTP estándar
+  // config.server_port = 443;  // Puerto seguro
+
+  // if (httpd_start(&camera_httpd, &config) == ESP_OK)
+  //   Serial.println("httpd_start");
+
+  //   httpd_register_uri_handler(camera_httpd, &index_uri);
+
+  ///NUEVOOOO 21-11-2024////////
+  httpd_ssl_config_t config = HTTPD_SSL_DEFAULT_CONFIG();
+    
+    // Configurar el nombre del host mDNS
+    config.server_port = 443;  // Puerto HTTPS estándar
+
+    // Cargar certificados
+    config.cacert = (const char *)cert;         // Certificado CA
+    config.prvtkey = (const char *)private_key; // Clave privada
+
+    // Iniciar el servidor
+    if (httpd_ssl_start(&camera_httpd, &config) == ESP_OK)
+    {
+        Serial.println("Servidor HTTPS iniciado");
+        httpd_register_uri_handler(camera_httpd, &index_uri);
+    }
+    else
+    {
+        Serial.println("Error al iniciar el servidor HTTPS");
+    }
+  /////////////////////////////
+  
+}
+
+void app_facenet_main() // Funcion principal de de reconocimiento facial 
+{
+  face_id_name_init(&st_face_list, FACE_ID_SAVE_NUMBER, ENROLL_CONFIRM_TIMES);
+  aligned_face = dl_matrix3du_alloc(1, FACE_WIDTH, FACE_HEIGHT, 3);
+  read_face_id_from_flash_with_name(&st_face_list);
+}     
+
+// REGISTRA NUEVO ROSTRO EN EL ESP32CAM:
+static inline int do_enrollment(face_id_name_list *face_list, dl_matrix3d_t *new_id)  
+{
+  ESP_LOGD(TAG, "START ENROLLING");
+  int left_sample_face = enroll_face_id_to_flash_with_name(face_list, new_id, st_name.enroll_name);
+  ESP_LOGD(TAG, "Face ID %s Enrollment: Sample %d",
+           st_name.enroll_name,
+           ENROLL_CONFIRM_TIMES - left_sample_face);
+  return left_sample_face;
+}
+ 
+// UTILIZA EL WEBSOCKETS PARA ENVIAR LISTAS DE LAS CARAS:
+static esp_err_t send_face_list(WebsocketsClient &client)
+{
+  client.send("delete_faces");                         // Envia un mensaje al cliente, indicando al navegador que borre todas las caras 
+  face_id_node *head = st_face_list.head;
+  char add_face[64];
+  for (int i = 0; i < st_face_list.count; i++)         // bucle de caras actuales
+  {
+    sprintf(add_face, "listface:%s", head->id_name);  
+    client.send(add_face);                             // enviar cara al navegador
+    head = head->next;
+  }
+}
+
+
+void handle_message(WebsocketsClient &client, WebsocketsMessage msg) 
+{
+  if (msg.data() == "stream") // Verifica si el mensaje recibido a través de WebSocket es igual a la cadena "stream"
+  {  
+    g_state = START_STREAM;
+    client.send("TRANSMISIÓN");
+  }
+  if (msg.data().substring(0, 8) == "capture:")
+  {
+    char person[FACE_ID_SAVE_NUMBER * ENROLL_NAME_LEN] = {0,};  
+    msg.data().substring(8).toCharArray(person, sizeof(person));
+    memcpy(st_name.enroll_name, person, strlen(person) + 1);
+    g_state = VERIFICACION_ENROLL;
+    client.send("VERIFICANDO.."); 
+  }
+
+  if (msg.data() == "recognise")
+  {
+    g_state = START_RECOGNITION;
+    client.send("RECONOCIENDO..");
+  }
+
+  if (msg.data().substring(0, 7) == "remove:")
+  {
+    msg.data().substring(7).toCharArray(person, sizeof(person));
+    g_state = VERIFICACION_DELETE; 
+  }
+
+  if (msg.data() == "consult_faces")
+  {
+    send_face_list(client); // Envia la lista de caras al cliente
+  }
+
+}
+
+
+//FUNCION PRINCIPAL
+void loop()
+{ 
+
+  manejar_interaccion();
+  
+}
+
+
+// FUNCIONES INDEPENDIENTES
+void manejar_interaccion()
+{
+  auto client = socket_server.accept();       // Acepta una conexión de cliente.
+  client.onMessage(handle_message);           // Configura un manejador para mensajes del cliente.
+  dl_matrix3du_t *image_matrix = dl_matrix3du_alloc(1, 320, 240, 3);  // Asigna memoria para una matriz de imagen.
+  http_img_process_result out_res = {0};      // Inicializa una estructura para procesar imágenes.
+  out_res.image = image_matrix->item;         // Asigna la imagen procesada a la estructura.
+    
+  client.send("TRANSMITIENDO...");                 // Envía el mensaje "TRANSMITIENDO....." al cliente.
+
+  while (client.available()) //Verifica si hay datos disponibles para ser procesados en la conexión de red establecida por el dispositivo.
+  { 
+    client.poll();
+     
+    if(estado_tiempo) // para temporizar en caso de que si haya rostro registrado
+    {
+      actual = millis();
+        if(actual - anterior > 1000)
+        {
+          client.send("Aguardando: "+ String(contador) +" seg.");
+          Serial.println(contador);
+          anterior = millis();
+
+          contador ++;
+          if(contador > 3)
+          {
+            g_state = START_ENROLL;
+            Serial.println("Llego al limite...!");
+            //g_state = START_ENROLL;
+            contador = 0;
+            estado_tiempo = false;
+          }
+        } //Finaliza condicion    
+    } //Finaliza estado_tiempo
+
+    if(estado_tiempo2) // para temporizar en caso de que no haya ningun rostro registrado
+    {
+      actual = millis();
+      if(actual - anterior_2 > 1000)
+      {
+        client.send("Aguardando: "+ String(contador) +" seg.");
+        Serial.println(contador);
+        anterior_2 = millis();
+
+        contador ++;
+        if(contador > 3)
+        {
+          g_state = START_ENROLL; 
+          Serial.println("Llego al limite...!");
+          contador = 0;
+          estado_tiempo2 = false;
+        } 
+      } // Finaliza la condicion
+    } //Finaliza estado_tiempo2
+
+    fb = esp_camera_fb_get();   // Se obtiene un fotograma de la cámara utilizando "esp_camera_fb_get()"
+    // Realiza diferentes acciones dependiendo del estado actual (detección, enrolamiento o reconocimiento):
+    if (g_state == START_ENROLL || g_state == START_RECOGNITION || g_state == VERIFICACION_ENROLL || g_state == VERIFICACION_DELETE) // Si g_state es igual a enrolamiento o reconocimiento, hace lo siguiente:
+    {
+      // Control de la LED flash del esp32cam:
+      if (!flash_led_on) 
+      {
+        digitalWrite(LED_FLASH, HIGH); // Si la LED flash está apagada, enciende 
+        flash_led_on = true;           // cambia a estado : verdadero 
+      }
+      // Inicializa algunas variables.
+      out_res.net_boxes = NULL;
+      out_res.face_id = NULL;
+      // Convierte el formato del fotograma y detecta caras en la imagen.
+      fmt2rgb888(fb->buf, fb->len, fb->format, out_res.image);
+      out_res.net_boxes = face_detect(image_matrix, &mtmn_config);
+
+      if (out_res.net_boxes)
+      {
+        // Si se detecta al menos una cara:
+        if (align_face(out_res.net_boxes, image_matrix, aligned_face) == ESP_OK)
+        {
+          // Alinea la cara detectada y obtiene su identificación.    
+          out_res.face_id = get_face_id(aligned_face);
+          last_detected_millis = millis();
+          // Verificacion antes del delete (eliminar rostros)
+          
+          if(g_state == VERIFICACION_DELETE)
+          {
+            face_id_node *f = recognize_face_with_name(&st_face_list, out_res.face_id);
+            if(f)
+            {
+              char mensaje_aut[64]; // variable para enviar mensajes
+              // Verificar si el nodo actual es el primero de la lista (ADMINISTRADOR)
+              if(st_face_list.head == f)
+              {
+                sprintf(mensaje_aut,"ADELANTE ADM: %s", f->id_name);
+                client.send(mensaje_aut);
+                delete_face_id_in_flash_with_name(&st_face_list, person);
+                send_face_list(client); // Envia la lista de caras al cliente
+                g_state = START_STREAM;
+              }else
+              {
+                sprintf(mensaje_aut,"NO ESTAS AUTORIZADO PARA BORRAR!!",f->id_name);
+                client.send(mensaje_aut);
+                g_state = START_STREAM; 
+              }
+            }
+          }
+
+          // Verificación antes del enrolamiento
+          if(g_state == VERIFICACION_ENROLL)
+          {
+            if(st_face_list.count == 0)  // Primero verifica si la lista de caras está vacía
+            {
+              char msj_nuevo_adm[64]; //mensaje de nuevo registro que enviara
+              //La lista de caras está vacía, procede a registrar:
+              sprintf(msj_nuevo_adm,"RETIRE EL ROSTRO!...");
+              client.send(msj_nuevo_adm);
+              estado_tiempo2 = true;
+              anterior_2 = millis(); // Establecer el tiempo inicial
+              Serial.println("Hola soy cara vacia");
+            }else // Si no es asi, entonces hace lo siguiente: 
+            {
+              face_id_node *f = recognize_face_with_name(&st_face_list, out_res.face_id);
+              if(f)
+              { 
+                  
+                char mensaje_aut[64]; // variable para enviar mensajes
+                // Verificar si el nodo actual es el primero de la lista (ADMINISTRADOR)
+                if (st_face_list.head == f) //verifica si es el ADMINISTRADOR 
+                {
+                  sprintf(mensaje_aut,"ADELANTE ADM: %s", f->id_name);
+                  client.send(mensaje_aut);    
+                  estado_tiempo = true;
+                  anterior = millis(); // Establecer el tiempo inicial
+                  Serial.println("Hola soy cara adm");
+                }else
+                {
+                  sprintf(mensaje_aut,"NO ESTAS AUTORIZADO!!",f->id_name);  
+                  client.send(mensaje_aut);
+                }
+                      
+              }
+            } // Finaliza caras vacias 
+
+          } //Finaliza verificacion ENROLL
+                        
+          ///////COMIENZA START ENROLL//////
+          if (g_state == START_ENROLL)
+          {           
+            int left_sample_face = do_enrollment(&st_face_list, out_res.face_id);
+            char enrolling_message[64];
+            sprintf(enrolling_message, "NUMERO DE MUESTRA %d PARA %s", ENROLL_CONFIRM_TIMES - left_sample_face, st_name.enroll_name);
+            client.send(enrolling_message);
+            if (left_sample_face == 0)
+            {
+              ESP_LOGI(TAG, "Enrolled Face ID: %s", st_face_list.tail->id_name);
+              g_state = START_STREAM;
+              char captured_message[64];
+              sprintf(captured_message, "Rostro capturado para: %s", st_face_list.tail->id_name);
+              client.send(captured_message);
+              send_face_list(client);
+            }
+
+          } // Finaliza el enrollamiento de caras
+
+          // Realiza el reconocimiento facial y actúa en consecuencia (abrir la puerta, etc.).
+          if (g_state == START_RECOGNITION  && (st_face_list.count > 0))
+          {   
+            // Control del bucle, para que finalice el bucle y reinicie contador en 0
+            contador = 0;
+            estado_tiempo = false;
+            estado_tiempo2 = false;
+            face_id_node *f = recognize_face_with_name(&st_face_list, out_res.face_id);
+            if (f)
+            {
+              char recognised_message[64];
+              sprintf(recognised_message, "Acceso correcto para: %s", f->id_name);
+              Serial.println(f->id_name); //id nombre
+              Serial.println(st_face_list.tail->id_name); //ultimo de la lista
+              Serial.println(st_face_list.count); // total caras registrados
+              if (st_face_list.head == f) //Si es el primero de la lista, lo denomina ADMINISTRADOR
+              {
+                Serial.print("el primero de la lista es: ");
+                Serial.println(st_face_list.head->id_name); // el primero de la lista   
+                sprintf(recognised_message,"Acceso correcto para el adm: %s", f->id_name);
+              }
+              //open_door(client);  
+              digitalWrite(LED_FLASH, LOW);     // Apaga la LED flash
+              flash_led_on = false;             // Actualiza el estado del flash
+              /////NUEVO/////
+              envio(); //activar para comunicacion serial OJO
+              //////////////
+              client.send(recognised_message); // envia el mensaje al cliente
+              g_state = START_STREAM;   // Cambia el estado a "START_STREAM" para finalizar el modo "Reconocimiento" 
+                        
+            }
+            else // esle de condicion (f)
+            {
+              client.send("ROSTRO NO REGISTRADO!");
+
+            } //Finaliza condicion (f)
+          }//Finaliza STAR recognition
+
+
+
+          dl_matrix3d_free(out_res.face_id); //Libera la memoria
+         ////////     
+        } // Finaliza align_face
+      } // Finaliza out_res.net_boxes
+                    
+    }else //condicion de tres estados.
+    {
+     if (flash_led_on) 
+       {
+          digitalWrite(LED_FLASH, LOW); // Apaga la LED flash 
+          flash_led_on = false;         // apaga el led
+        }
+    } // Finaliza verificacion de tres estados.
+
+    client.sendBinary((const char *)fb->buf, fb->len);    // Envía el fotograma al cliente en formato binario.
+
+    esp_camera_fb_return(fb);                              // Libera el fotograma.
+    fb = NULL;
+  } // Finaliza el bucle while
+
+
+}
+
+
+void envio()
+{
+  SerialPort.println(1); // Envía 1 para activar la huella
+  Serial.println("Reconocimiento exitoso. Enviado '1'.");
+}   
+
+
+
+
+  
+
+
+
+

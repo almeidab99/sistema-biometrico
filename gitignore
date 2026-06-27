@@ -1,0 +1,30 @@
+# Credenciales / secretos - NUNCA subir
+secrets.h
+config.h
+*_real.h
+
+# Backups y borradores manuales (usa git para versionado, no carpetas)
+copia de seguridad/
+*_bkp*
+*bkp_*
+*.bak
+*MODIFICADO*
+
+# Archivos no usados / placeholders sueltos
+*_nousar*
+usar_*.txt
+
+# Artefactos de compilación
+build/
+.pio/
+*.bin
+*.elf
+
+# IDE
+.theia/
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db

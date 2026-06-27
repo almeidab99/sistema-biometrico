@@ -1,0 +1,46 @@
+const char* registered_faces_html = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Caras</title>
+</head>
+<body>
+    <h1>Lista de Caras Capturadas</h1>
+    <ul id="faceList"></ul>
+
+    <script>
+        // Conectarse al servidor ESP32-CAM a traves de WebSocket
+        //const socket = new WebSocket('ws://localhost:82'); // Reemplaza 'ip_del_servidor' con la IP de tu servidor ESP32-CAM
+        const ws = new WebSocket(WS_URL); 
+        // Funcion para mostrar caras en la lista
+        function addFaceToList(faceName) {
+            const faceList = document.getElementById('faceList');
+            const listItem = document.createElement('li');
+            listItem.textContent = faceName;
+            faceList.appendChild(listItem);
+        }
+
+        // Manejar mensajes del servidor
+        ws.onmessage = message => {     
+            if (typeof message.data === "string") {    
+                if (message.data.substr(0, 8) == "listface") {   
+             // Si el mensaje comienza con 'listface', agrega la cara a la lista
+                    const faceName = message.data.substr(8);
+                    addFaceToList(faceName);
+        }
+    }
+};
+
+        // Manejar errores de WebSocket
+        ws.onerror = (error) => {
+            console.error('Error de WebSocket:', error);
+        };
+
+        // Manejar cierre de WebSocket
+        ws.onclose = () => {
+            console.log('Conexion WebSocket cerrada');
+        };
+    </script>
+</body>
+</html>
+)rawliteral";

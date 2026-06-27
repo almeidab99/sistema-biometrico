@@ -1,0 +1,371 @@
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de acceso de reconocimiento facial</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<style>
+@media only screen and (min-width: 850px)
+{
+	body
+  {
+		display: flex;
+	}
+	 #content-right
+   {
+     margin-left: 15px;
+	 }  
+}
+body
+{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #181818;
+  color:  #EFEFEF;
+  font-size: 16px;
+}
+ #content-left
+ {
+    max-width: 400px;
+	 flex: 1;
+ }
+ #content-right
+ {
+    max-width: 400px;
+	 flex: 1;
+ } 
+ #content-bottom
+ {
+    max-width: 300px;
+	 flex: 1;
+ }
+ #stream
+ {
+   width: 100%;
+ }
+  #status-display
+  {
+    height: 25px;
+    border: none;
+    padding: 10px;
+    font: 18px/22px sans-serif;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background: #5e005e;
+    text-align: center;
+    border: 2px solid rgba(201, 74, 0, 0.788);
+    border: 2px solid rgb(255, 0, 19)
+  }
+  #person
+  {
+    width:100%;
+    height: 25px;
+    border: none;
+    padding: 20px 10px;
+    font: 18px/22px sans-serif;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    resize: none;
+    box-sizing: border-box;
+    background-color: white; 
+    color: black; 
+    border: 2px solid rgb(95, 255, 3); 
+  }
+
+  button
+  {
+    display: block;
+    margin: 10px 0;
+    padding: 0 25px;
+    border: 0;
+    width: 45%;
+    line-height: 30px;
+    cursor: pointer;
+    color: #fff;
+    background: #800080;
+    border-radius: 5px;
+    font-size: 16px;
+    outline: 0;
+    transition: background 0.3s ease;
+    border: 2px solid rgb(0, 158, 119);
+    font-family: 'San Francisco', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-weight: bold;
+  }
+
+ .buttons
+  {
+    /* height:40px; */
+    height:10px;
+  }
+       
+ button:hover
+ {
+    /* background: #6A5ACD; */
+    background: #530041;
+ }
+
+ button:active
+ {
+    /* background: #f21c21; */
+    background: #a00000af;
+ }
+ button:disabled
+ {
+    cursor: default;
+    background: #969595;
+ }
+ .left
+ {
+    float: left;
+ }
+ .right
+ {
+    float: right;
+ }
+ .image-container
+ {
+    position: relative;
+ }
+ .stream
+ {
+    max-width: 400px;
+ }
+ ul
+ {
+    list-style: none;
+    padding: 5px;
+    margin:0;
+ }
+ li
+ {
+    padding: 5px 0;
+ }
+ .delete
+ {
+    background: #af0003;
+    border-radius: 50%;
+    color: #fff;
+    text-align: center;
+    line-height: 18px;
+    cursor: pointer;
+    font-size: 14px; /* Tamano del texto */
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    /*justify-content: center;*/
+ }
+ .delete:hover
+ {
+    background: #f21c21; /* Cambia el color de fondo al hacer hover */
+ }
+ h3
+ {
+   margin-bottom: 3px;
+ }
+
+ /* Estilo para la lista de caras */
+ .people .table-list
+ {
+    display: table;
+    border-spacing: 10px;
+    border-collapse: separate;
+    /*NUEVO CODIGO*/
+    width: 100%; /*Ajustamos el ancho al 100% para que ocupe todo el contenedor */
+    border-collapse: collapse; /* Colapsamos los bordes de la tabla para que no haya espacios entre celdas */
+ }
+
+  /* Estilo para cada "celda" de la lista (en este caso, los elementos <li>) */
+ .people .table-list li
+ {
+   display: table-row;
+   padding: 10px;
+   /* border: 1px solid #000;*/
+   border: 2px solid mediumblue;
+   background-color: #f0f0f0;
+   margin: 5px;
+   color: #000; /* Color del texto en negro */
+ }
+  
+
+
+
+</style>
+</head>
+<body>
+  
+<div id="content-left">
+  <div id="stream-container" class="image-container"> <img id="stream" src=""> </div>
+</div>
+<div id="content-right">
+  <div id="status-display"> <span id="current-status"></span> </div>
+  <div id="person-name">
+    <input id="person" type="text" value="" placeholder="Escriba el nombre del usuario aqui...">
+  </div>
+  <div class="buttons">
+    <button id="button-stream" class="right">MODO TRANSMISION</button>
+  </div>
+  <div class="buttons">
+    <button id="button-capture" class="left" title="Ingrese un nombre arriba antes de capturar una cara">REGISTRAR USUARIO</button>
+    <button id="button-recognise" class="right">CONTROL DE ACCESO</button>
+  </div>
+
+  <div class="people">
+    <h3>REGISTROS: </h3>
+    <ul class="table-list">
+    </ul>
+  </div>
+  
+  
+  <div class="buttons">
+    <button id="button-consult-faces" class="right">TABLERO DE REGISTROS</button>  
+  </div>
+
+</div>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(event)
+{
+  var baseHost = document.location.origin;
+  var streamUrl = baseHost + ":81";
+  const WS_URL = "ws://" + window.location.host + ":82";
+  const ws = new WebSocket(WS_URL); 
+
+  const view = document.getElementById("stream");
+  const personFormField = document.getElementById("person");
+  const streamButton = document.getElementById("button-stream");
+  const captureButton = document.getElementById("button-capture");
+  const recogniseButton = document.getElementById("button-recognise");
+  //NUEVO:
+  const faceList = document.getElementById("face-list");
+  
+ 
+let facesListVisible = false; // Variable para rastrear el estado de la lista de caras
+ // MANEJADORES DE EVENTOS: (ws.onopen), (ws.onmessage)
+  ws.onopen = () => {                       // Se ejecutara cuando la conexion WebSocket se abra.
+    console.log(`Connected to ${WS_URL}`);  // para mostrar un mensaje en la consola del navegador o en el entorno donde se este ejecutando este codigo
+  };
+  ws.onmessage = message => // Esta funcion de flecha se ejecutara cuando se reciba un mensaje a traves de la conexion WebSocket.
+  {     
+    if (typeof message.data === "string")  // Si el tipo mensaje es de tipo ""string", entonces hace lo siguiente:
+    {      
+      if (message.data.substr(0, 8) == "listface")
+      {       // Si el mensaje en cadena comienza con "Listface", entonces hace lo siguiente:
+        addFaceToScreen(message.data.substr(9));           // (addFaceToScreen) para agregar una cara a la pantalla.
+      }else if (message.data == "delete_faces")
+      {         // Si el mensaje en cadena comienza con "delete_faces", entonces hace lo siguiente:
+        deleteAllFacesFromScreen();                        // (deleteAllFacesFromScreen) para eliminar todas las caras de la pantalla.
+      }else
+      {                                             // En otros casos, se actualiza el contenido de elementos HTML en la pagina.                 
+        document.getElementById("current-status").innerHTML = message.data; 
+        document.getElementById("status-display").style.background = "green"; //La pantalla queda verde
+      }
+    }
+    if (message.data instanceof Blob) // Si el mensaje recibido es una instancia de Blob, entonces hace los siguiente:
+    {   
+      var urlObject = URL.createObjectURL(message.data);  // se crea una URL para el objeto Blob
+      view.src = urlObject;                              //  se establece como fuente de la imagen "view"
+    }
+  }
+
+  streamButton.onclick = () =>  // Cuando se hace clic en el boton con el id "streamButton", se envia el mensaje "stream" a traves del WebSocket (ws).
+  {    
+    ws.send("stream");
+    personFormField.value = "";               // Limpia el valor del campo de entrada con el id "personFormField".
+  };
+
+  captureButton.onclick = function()
+  {
+    person_name = document.getElementById("person").value;
+
+    ws.send("capture:" + person_name); // caja de texto!!.. Envia la captura + el nombre de la persona
+  };    
+  recogniseButton.onclick = () =>  // Cuando se hace clic en el boton con el id "recogniseButton", se envia el mensaje "recognise" a traves del WebSocket.
+  { 
+    ws.send("recognise");
+    personFormField.value = "";               // Limpia el valor del campo de entrada con el id "personFormField".
+  };
+
+
+  personFormField.onkeyup = () => // Cuando se presiona una tecla en el campo de entrada con el id "personFormField", se habilita el boton de captura ("captureButton") al establecer su propiedad "disabled" en falso.
+  { 
+    //Verifica si el campo de texto está vacía
+    if(personFormField.value.trim() === "")
+    {
+      //Si está vacía, desactivar boton de capturar
+      captureButton.disabled = true;
+    }else
+    {
+      //Si no está vacía, activar el boton capturar
+      captureButton.disabled = false;
+    }
+    
+  };
+
+  function deleteAllFacesFromScreen()  // Se encarga de eliminar elementos de la lista de caras en la interfaz de usuario
+  {   
+    // elimina la lista de caras solo en el navegador (interfaz)
+    const faceList = document.querySelector("ul");  // Encuentra la lista de caras en el documento (presumiblemente representada como una lista desordenada <ul>).
+    while (faceList.firstChild)
+    {                   
+      faceList.firstChild.remove();                 // Luego, elimina todos los elementos hijos de la lista mientras haya elementos en ella.
+    }
+    personFormField.value = "";                    // Limpia el valor del campo de entrada con el id "personFormField".
+    captureButton.disabled = true;                 // Deshabilita el boton de captura ("captureButton") estableciendo su propiedad "disabled" en verdadero.
+  }
+
+  function addFaceToScreen(person_name)  // Agrega elementos a una lista de caras en la interfaz de usuario
+  {             
+    const faceList = document.querySelector("ul");    // Esta linea busca un elemento <ul> en el documento HTML y lo asigna a la variable faceList. La variable faceList representa la lista de caras en la interfaz de usuario.
+    let listItem = document.createElement("li");      // Aqui, se crea un nuevo elemento de lista <li> que se utilizara para representar a una persona en la lista de caras. Este elemento se almacena en la variable listItem.
+    let closeItem = document.createElement("span");   // Se crea un nuevo elemento <span> que servira como un boton de eliminacion para la persona
+    closeItem.classList.add("delete");                // Se le asigna una clase "delete"
+    closeItem.id = person_name;                       // Y un ID igual al nombre de la persona (person_name).    
+    //Al hacer click en el boton "X":
+    closeItem.addEventListener("click", function()  // Se agrega un evento de clic al elemento closeItem 
+    {  
+      if(confirm("Estas seguro de eliminar usuario " + person_name + " ?")) //Cuadro de dialogo
+      {                           // Realiza la verificacion de la contrasena del administrador, si es correcto hace lo siguiente
+        ws.send("remove:" + person_name);
+        actualizar_tabla();
+      }
+    });    
+    listItem.appendChild(                 // Se agrega el nombre de la persona (person_name) como un elemento <strong> dentro del elemento de lista <li>.
+      document.createElement("strong")    // Se establece el texto del elemento strong con el nombre de la persona.
+    ).textContent = person_name;
+    listItem.appendChild(closeItem).textContent = " X "; // Se agrega el elemento closeItem (boton de eliminacion) al elemento de lista <li>. Tambien se establece el texto del elemento closeItem en "X", que representara el boton de eliminar.
+    faceList.appendChild(listItem); // Se agrega el elemento de lista <li>, que representa a la persona con su nombre y el boton de eliminacion, a la lista de caras (faceList) en la interfaz de usuario.
+
+  }
+
+  //Funcion para la actualizacion de tabla de consultas
+  function actualizar_tabla()
+  {
+    ws.send("consult_faces");
+  }
+
+  document.getElementById("button-consult-faces").onclick = function()
+  {
+    if (facesListVisible)
+    {  
+    // Si la lista de caras esta visible, la ocultamos
+      deleteAllFacesFromScreen();   
+      facesListVisible = false; // Actualizamos el estado a oculto
+    }else
+    {
+    // Si la lista de caras esta oculta, la mostramos
+    // Enviamos el mensaje para listar las caras
+      ws.send("consult_faces");
+      facesListVisible = true; // Actualizamos el estado a visible
+    }
+    
+  }; 
+
+  captureButton.disabled = true;  
+});
+</script>
+</body>
+</html>
